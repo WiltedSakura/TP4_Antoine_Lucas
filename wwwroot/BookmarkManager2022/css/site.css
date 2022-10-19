@@ -62,6 +62,7 @@ body {
     align-items: center;
 
 }
+/*
 .nouvelleLayout {
     display: grid;
     grid-template-columns: 0.5fr 40px 1fr 35px 35px;
@@ -70,7 +71,7 @@ body {
     padding-left: 5px;
 
 }
-
+*/
 .nouvelleRow>.cmd {
     display: none;
 }
@@ -113,6 +114,8 @@ div2, span2 {
     border:1px solid red;
 }
 .postImage{
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 370px;
+    background-size: contain;
+    background-repeat: no-repeat;
 }

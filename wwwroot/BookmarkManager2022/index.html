@@ -39,7 +39,7 @@
             </div>
 
             <div class="scrollContainer">
-                <div id="NouvellesList">
+                <div id="nouvellesList">
                     <!-- filled programmatically-->
                 </div>
             </div>
@@ -61,6 +61,8 @@
                         <label for="url_input">ImageUrl</label>
                         <input type="url" id="url_input" class="form-control URL" required
                             invalidMessage="Lien invalide">
+                            
+                        <input type="hidden" id="Date_input" value="0">
                     </form>
                 </div>
                 <div id="confirmDeleteDlg">
@@ -76,6 +78,7 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
         <script src="js/customValidation.js"></script>
         <script src="js/api.js"></script>
+        <script src="js/date.js"></script>
         <script defer>
             const periodicRefreshPeriod = 10;
             let holdCheckETag = false;
@@ -87,6 +90,8 @@
             let nouvelleIdToDelete = 0; // used by confirmDeleteDlg
             let selectedCategory = "";
             let previousScrollPosition = 0;
+            let limit = 5;
+            let offset = 0;
             init_UI();
             HEAD(checkETag, error);
             setInterval(() => { HEAD(checkETag, error) }, periodicRefreshPeriod * 1000);
@@ -100,7 +105,7 @@
 
             function getNouvellesList() {
                 function prepareQueryString() {
-                    let queryString = "?sort=Category&sort=Title";
+                    let queryString = "?sort=Date,desc&limit=" + limit + "&offset=" + offset;
                     if (!hideSearchBar) {
                         selectedCategory = $("#searchCategory").val();
                         let searchTitle = $("#searchTitle").val();
@@ -133,34 +138,40 @@
                 */
                 function makeImage(url) {
                     let link = $(`<a href='${url}' target='_blank'></a>`);
-                    link.append($(`<div class='postImage' style="background-image:url('${url}')">`));
+                    //link.append($(`<div class='postImage' style="background-image:url('${url}')"/>`));
+                    link.append($(`<img src='${url}'/>`));
                     return link;
                 }
                 function insertIntoNouvelleList(nouvelle) {
-                    let catElem = $(`<div class="ellipsis">${nouvelle.Category}</div>`);
-                    let titElem = $(`<div  class="ellipsis">${nouvelle.Title}</div>`);
-                    let textElem = $(`<div  class="ellipsis">${nouvelle.Text}</div>`)
-                    let editCmd = $(`<div class="cmd editCmd fa fa-pencil-square" nouvelleid="${nouvelle.Id}" title="Editer ${nouvelle.Title}" data-toggle="tooltip">`);
-                    let deleteCmd = $(`<div class="cmd deleteCmd fa fa-window-close" nouvelleid="${nouvelle.Id}" title="Effacer ${nouvelle.Title}" data-toggle="tooltip">`);
+                    let catElem = $(`<h2>${nouvelle.Category}</h2>`);
+                    let titElem = $(`<h3  >${nouvelle.Title}</h3>`);
+                    let textElem = $(`<div  >${nouvelle.Text}</div> `);
+                    let datElem = $(`<div  >${convertToFrenchDate(parseInt(nouvelle.Date))}</div> `);
+                    let editCmd = $(`<div class="cmd editCmd fa fa-pencil-square" nouvelleid="${nouvelle.Id}" title="Editer ${nouvelle.Title}" data-toggle="tooltip"> `);
+                    let deleteCmd = $(`<div class="cmd deleteCmd fa fa-window-close" nouvelleid="${nouvelle.Id}" title="Effacer ${nouvelle.Title}" data-toggle="tooltip"> `);
                     let nouvelleRow = $("<div class='nouvelleLayout nouvelleRow'>");
+            
                     nouvelleRow.append(catElem);
                     nouvelleRow.append(titElem);
                     nouvelleRow.append(textElem);
                     nouvelleRow.append(makeImage(nouvelle.ImageUrl));
+                    nouvelleRow.append(datElem);
                     nouvelleRow.append(editCmd);
                     nouvelleRow.append(deleteCmd);
-                    $("#NouvellesList").append(nouvelleRow);
+                    $("#nouvellesList").append(nouvelleRow);
                 }
                 
                 currentETag = ETag;
                 previousScrollPosition = $(".scrollContainer").scrollTop();
-                $("#NouvellesList").empty();
+                $("#nouvellesList").empty();
                 let currentCategory = "";
                 for (let nouvelle of nouvelles) {
+                    /*
                     if (nouvelle.Category !== currentCategory)
                         currentCategory = nouvelle.Category;
                     else
                         nouvelle.Category = "";
+                        */
                     insertIntoNouvelleList(nouvelle);
                 }
                 $(".scrollContainer").scrollTop(previousScrollPosition);
@@ -168,6 +179,15 @@
                 $(".deleteCmd").click(e => { deleteNouvelle(e) });
                 $('[data-toggle="tooltip"]').tooltip();
             }
+
+            $(".scrollContainer").scroll(function () {
+                    if ($(".scrollContainer").scrollTop() + $(".scrollContainer").innerHeight() >= $("#nouvellesList").height()) {
+                        // todo: charger la prochaine nouvelle
+                        limit++;
+                        previousScrollPosition = $(".scrollContainer").scrollTop();
+                        getNouvellesList();
+                    }
+                });
 
             function error(status) {
                 let errorMessage = "";
@@ -198,7 +218,7 @@
                 holdCheckETag = true;
                 createMode = true;
                 resetNouvelleForm()
-                $("#nouvelleDlg").dialog('option', 'title', 'Ajout de nouvelle');
+                $("#nouvelleDlg").dialog('option', 'Title', 'Ajout de nouvelle');
                 $("#nouvelleDlgOkBtn").text("Ajouter");
                 $("#nouvelleDlg").dialog('open');
             }
@@ -207,7 +227,7 @@
                 createMode = false;
                 GET_ID(e.target.getAttribute("nouvelleid"), nouvelleToForm, error);
                 holdCheckETag = true;
-                $("#nouvelleDlg").dialog('option', 'title', 'Modification de nouvelle');
+                $("#nouvelleDlg").dialog('option', 'Title', 'Modification de nouvelle');
                 $("#nouvelleDlgOkBtn").text("Modifier");
                 $("#nouvelleDlg").dialog('open');
             }
@@ -217,12 +237,12 @@
                 GET_ID(
                     nouvelleIdToDelete,
                     nouvelle => {
-                        $("#confirmationMessage").html("Voulez-vous vraiment effacer le favori <b>" + nouvelle.Title + "</b>?")
+                        $("#confirmationMessage").html("Voulez-vous vraiment effacer la nouvelle <b>" + nouvelle.Title + "</b>?")
                     },
                     error
                 );
                 holdCheckETag = true;
-                $("#confirmDlg").dialog('option', 'title', 'Retrait de favori...');
+                $("#confirmDlg").dialog('option', 'Title', 'Retrait de nouvelle...');
                 $("#confirmDeleteDlgOkBtn").text("Effacer");
                 $("#confirmDeleteDlg").dialog('open');
             }
@@ -233,10 +253,12 @@
                 $("#text_input").val("");
                 $("#url_input").val("");
                 $("#category_input").val("");
+                $("#Date_input").val(Date.now());
             }
             function nouvelleFromForm() {
+               
                 if ($("#nouvelleForm")[0].checkValidity()) {
-                    let nouvelle = {Id: $("#Id_input"), Category: $("#category_input").val(), Title: $("#title_input").val(), Text : $("#texte_input").val(), ImageUrl: $("#url_input").val(), Date :  convertToFrenchDate(date)};
+                    let nouvelle = {Id: parseInt($("#Id_input").val()), Category: $("#category_input").val(), Title: $("#title_input").val(), Text : $("#text_input").val(), ImageUrl: $("#url_input").val(), Date : $("#Date_input").val()/*Date.now()*/};
                     return nouvelle;
                 } else {
                     $("#nouvelleForm")[0].reportValidity()
@@ -249,7 +271,8 @@
                 $("#title_input").val(nouvelle.Title);
                 $("#text_input").val(nouvelle.Text);
                 $("#url_input").val(nouvelle.ImageUrl);
-                //$("#category_input").val(nouvelle.Category);
+                $("#Date_input").val(nouvelle.Date);
+                
             }
 
             function init_UI() {
